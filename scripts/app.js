@@ -68,13 +68,15 @@ APP.Main = (function() {
     var storyId = "s-" + key;
 
     var story = document.getElementById(storyId);
+    var storyCopy = story.cloneNode(false);
 
     details.time *= 1000;
     var html = storyTemplate(details);
-    story.innerHTML = html;
-    story.addEventListener('click', onStoryClick.bind(this, details));
-    story.classList.add('clickable');
+    storyCopy.innerHTML = html;
+    storyCopy.addEventListener('click', onStoryClick.bind(this, details));
+    storyCopy.classList.add('clickable');
 
+    story.parentNode.replaceChild(storyCopy, story);
     // Tick down. When zero we can batch in the next load.
     storyLoadCount--;
 
