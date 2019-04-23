@@ -239,10 +239,7 @@ main.loading {
 
   overflow: hidden;
   transition: opacity 0.3s ease-out;
-}
-
-.story-details * {
-  will-change: transform;
+  will-change: transform, opacity;
   transform: translateZ(0);
 }
 

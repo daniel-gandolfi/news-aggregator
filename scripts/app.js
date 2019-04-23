@@ -170,6 +170,7 @@ APP.Main = (function() {
 
     var storyDetails = $('#sd-' + id);
     var left = null;
+    var translateDiff = null;
 
     if (!storyDetails)
       return;
@@ -179,32 +180,33 @@ APP.Main = (function() {
 
     function animate () {
 
-      // Find out where it currently is.
-      var storyDetailsPosition = storyDetails.getBoundingClientRect();
-
       // Set the left value if we don't have one already.
-      if (left === null)
-        left = storyDetailsPosition.left;
+      if (left === null) {
+        // Find out where it currently is.
+        translateDiff = left = +storyDetails.getBoundingClientRect().left;
+      }
+
 
       // Now figure out where it needs to go.
-      left += (0 - storyDetailsPosition.left) * 0.1;
+      translateDiff += -translateDiff * 0.1;
+      translateX = left - translateDiff;
 
       // Set up the next bit of the animation if there is more to do.
-      if (Math.abs(left) > 0.5)
-        setTimeout(animate, 4);
+      if (Math.abs(translateDiff) > 0.5)
+        requestAnimationFrame(animate);
       else
-        left = 0;
+        translateX = left;
 
       // And update the styles. Wait, is this a read-write cycle?
       // I hope I don't trigger a forced synchronous layout!
-      storyDetails.style.left = left + 'px';
+      storyDetails.style.transform = "translateX( " + -translateX + 'px )';
     }
 
     // We want slick, right, so let's do a setTimeout
     // every few milliseconds. That's going to keep
     // it all tight. Or maybe we're doing visual changes
     // and they should be in a requestAnimationFrame
-    setTimeout(animate, 4);
+    requestAnimationFrame(animate);
   }
 
   function hideStory(id) {
@@ -213,39 +215,43 @@ APP.Main = (function() {
       return;
 
     var storyDetails = $('#sd-' + id);
-    var left = 0;
+    var left;
+    var translateX, translateDiff;
 
     document.body.classList.remove('details-active');
     storyDetails.style.opacity = 0;
 
     function animate () {
-
-      // Find out where it currently is.
-      var mainPosition = main.getBoundingClientRect();
-      var storyDetailsPosition = storyDetails.getBoundingClientRect();
-      var target = mainPosition.width + 100;
+     
+      if (left === undefined) {
+        // Find out where it currently is.
+        var mainPosition = main.getBoundingClientRect();
+        left = mainPosition.width
+        translateDiff = 0;
+      }
 
       // Now figure out where it needs to go.
-      left += (target - storyDetailsPosition.left) * 0.1;
+      translateDiff += (left - translateDiff) * 0.1;
+      translateX = left - translateDiff;
 
       // Set up the next bit of the animation if there is more to do.
-      if (Math.abs(left - target) > 0.5) {
-        setTimeout(animate, 4);
+      if (left - translateDiff > 0.5) {
+        requestAnimationFrame(animate);
       } else {
-        left = target;
+        translateX = 0;
         inDetails = false;
       }
 
       // And update the styles. Wait, is this a read-write cycle?
       // I hope I don't trigger a forced synchronous layout!
-      storyDetails.style.left = left + 'px';
+      storyDetails.style.transform = "translateX( " + -translateX + 'px )';
     }
 
     // We want slick, right, so let's do a setTimeout
     // every few milliseconds. That's going to keep
     // it all tight. Or maybe we're doing visual changes
     // and they should be in a requestAnimationFrame
-    setTimeout(animate, 4);
+    requestAnimationFrame(animate);
   }
 
   /**
