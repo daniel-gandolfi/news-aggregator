@@ -322,6 +322,12 @@ APP.Main = (function() {
 
     var end = storyStart + count;
     var fragment = document.createDocumentFragment();
+    var basicStoryTemplate = storyTemplate({
+      title: '...',
+      score: '-',
+      by: '...',
+      time: 0
+    });
     for (var i = storyStart; i < end; i++) {
 
       if (i >= stories.length)
@@ -331,12 +337,7 @@ APP.Main = (function() {
       var story = document.createElement('div');
       story.setAttribute('id', 's-' + key);
       story.classList.add('story');
-      story.innerHTML = storyTemplate({
-        title: '...',
-        score: '-',
-        by: '...',
-        time: 0
-      });
+      story.innerHTML = basicStoryTemplate;
       fragment.appendChild(story);
 
       APP.Data.getStoryById(stories[i], onStoryData.bind(this, key));
