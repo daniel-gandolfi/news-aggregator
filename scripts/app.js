@@ -294,34 +294,43 @@ APP.Main = (function() {
   function colorizeAndScaleStories() {
 
     var storyElements = document.querySelectorAll('.story');
-
-    // It does seem awfully broad to change all the
-    // colors every time!
-    for (var s = 0; s < storyElements.length; s++) {
-
-      var story = storyElements[s];
-      var score = story.querySelector('.story__score');
-      var title = story.querySelector('.story__title');
-
-      // Base the scale on the y position of the score.
+      // It does seem awfully broad to change all the
+      // colors every time!
+      requestAnimationFrame(function(){
       var height = main.offsetHeight;
-      var mainPosition = main.getBoundingClientRect();
-      var scoreLocation = score.getBoundingClientRect().top -
-          document.body.getBoundingClientRect().top;
-      var scale = Math.min(1, 1 - (0.05 * ((scoreLocation - 170) / height)));
-      var opacity = Math.min(1, 1 - (0.5 * ((scoreLocation - 170) / height)));
+      var bodyTop = document.body.getBoundingClientRect().top;
+      Array.prototype.map.call(storyElements, function(story){
+        var score = story.querySelector('.story__score');
+        var title = story.querySelector('.story__title');
 
-      score.style.width = (scale * 40) + 'px';
-      score.style.height = (scale * 40) + 'px';
-      score.style.lineHeight = (scale * 40) + 'px';
+        // Base the scale on the y position of the score.
+        
+        var scoreBounds = score.getBoundingClientRect();
+        var scoreLocation = scoreBounds.top - bodyTop;
+        var scale = Math.min(1, 1 - (0.05 * ((scoreLocation - 170) / height)));
+        var opacity = Math.min(1, 1 - (0.5 * ((scoreLocation - 170) / height)));
 
-      // Now figure out how wide it is and use that to saturate it.
-      scoreLocation = score.getBoundingClientRect();
-      var saturation = (100 * ((scoreLocation.width - 38) / 2));
+        var diameter = scale * 40;
 
-      score.style.backgroundColor = 'hsl(42, ' + saturation + '%, 50%)';
-      title.style.opacity = opacity;
-    }
+        // Now figure out how wide it is and use that to saturate it.
+        var saturation = (100 * ((diameter - 38) / 2));
+
+        return {
+          story,
+          score,
+          title,
+          diameter,
+          saturation,
+          opacity
+        }
+      }).forEach(function(storyComputedData){
+        var title = storyComputedData.title;
+        var score = storyComputedData.score;
+        score.style.width = score.style.height = score.style.lineHeight = storyComputedData.diameter + "px";
+        score.style.backgroundColor = 'hsl(42, ' + storyComputedData.saturation + '%, 50%)';
+        title.style.opacity = storyComputedData.opacity;
+      })
+    });
   }
 
   main.addEventListener('scroll', function() {
