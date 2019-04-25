@@ -303,7 +303,7 @@ APP.Main = (function() {
         var score = story.querySelector('.story__score');
         var title = story.querySelector('.story__title');
 
-        // Base the scale on the y position of the score.
+        // Base the cale on the y position of the score.
         
         var scoreBounds = score.getBoundingClientRect();
         var scoreLocation = scoreBounds.top - bodyTop;
@@ -326,7 +326,7 @@ APP.Main = (function() {
       }).forEach(function(storyComputedData){
         var title = storyComputedData.title;
         var score = storyComputedData.score;
-        score.style.width = score.style.height = score.style.lineHeight = storyComputedData.diameter + "px";
+        score.style.transform = "scale(" + storyComputedData.scale + ")";
         score.style.backgroundColor = 'hsl(42, ' + storyComputedData.saturation + '%, 50%)';
         title.style.opacity = storyComputedData.opacity;
       })
