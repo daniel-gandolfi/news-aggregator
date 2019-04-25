@@ -55,6 +55,16 @@ APP.Main = (function() {
   var storyDetailsCommentTemplate =
       Handlebars.compile(tmplStoryDetailsComment);
 
+  var loadingStoryTemplate = storyTemplate({
+    title: '...',
+    score: '-',
+    by: '...',
+    time: 0
+  });
+  var loadingStoryDetailsCommentHtml = storyDetailsCommentTemplate({
+    by: '', text: 'Loading comment...'
+  });
+
   /**
    * As every single story arrives in shove its
    * content in at that exact moment. Feels like something
@@ -85,6 +95,36 @@ APP.Main = (function() {
       colorizeAndScaleStories();
   }
 
+  function _createStoryDetailCommentNode(id, innerHTML){
+    var commentNode = document.createElement('aside')
+    commentNode.id = "sdc-" + id;
+    commentNode.className = 'story-details__comment';
+    commentNode.innerHTML = innerHTML;
+    return commentNode;
+  }
+
+  function _createLoadingStoryDetailCommentNode(){
+    return _createStoryDetailCommentNode("loading", loadingStoryDetailsCommentHtml);
+  }
+
+  var _getLoadingCommentsNodes = (function _memoizationWrapper(){
+    var memoizationCollection = [null]
+    return function(count){
+      if (count > 0){
+        if (!memoizationCollection[count]){
+          memoizationCollection[count] = document.createDocumentFragment();
+          if (count == 1) {
+            memoizationCollection[count].appendChild(_createLoadingStoryDetailCommentNode())
+          } else {
+            memoizationCollection[count].appendChild(_getLoadingCommentsNodes(count - 1));
+            memoizationCollection[count].appendChild(_createLoadingStoryDetailCommentNode());
+          }
+        }
+        return memoizationCollection[count];
+      }
+    } 
+  })()
+
   function onStoryClick(details) {
 
     var storyDetails = $('sd-' + details.id);
@@ -109,9 +149,6 @@ APP.Main = (function() {
 
       var storyDetailsHtml = storyDetailsTemplate(details);
       var kids = details.kids;
-      var commentHtml = storyDetailsCommentTemplate({
-        by: '', text: 'Loading comment...'
-      });
 
       storyDetails = document.createElement('section');
       storyDetails.setAttribute('id', 'sd-' + details.id);
@@ -132,25 +169,25 @@ APP.Main = (function() {
 
       if (typeof kids === 'undefined')
         return;
+      // Create some loading elements
+      commentsElement.appendChild(_getLoadingCommentsNodes(3));
+      var containsLoadingElements = true;
 
       for (var k = 0; k < kids.length; k++) {
-
-        comment = document.createElement('aside');
-        comment.setAttribute('id', 'sdc-' + kids[k]);
-        comment.classList.add('story-details__comment');
-        comment.innerHTML = commentHtml;
-        commentsElement.appendChild(comment);
-
         // Update the comment with the live data.
         APP.Data.getStoryComment(kids[k], function(commentDetails) {
-
+          if (containsLoadingElements) {
+            containsLoadingElements = false;
+            while(commentsElement.children.length !== 1) {
+              commentsElement.removeChild(commentsElement.children[1]);
+            }
+          }
           commentDetails.time *= 1000;
-
-          var comment = commentsElement.querySelector(
-              '#sdc-' + commentDetails.id);
-          comment.innerHTML = storyDetailsCommentTemplate(
-              commentDetails,
-              localeData);
+          var comment = _createStoryDetailCommentNode(commentDetails.id, storyDetailsCommentTemplate(
+            commentDetails,
+            localeData
+          ));
+          commentsElement.appendChild(comment);
         });
       }
     }
@@ -322,12 +359,6 @@ APP.Main = (function() {
 
     var end = storyStart + count;
     var fragment = document.createDocumentFragment();
-    var basicStoryTemplate = storyTemplate({
-      title: '...',
-      score: '-',
-      by: '...',
-      time: 0
-    });
     for (var i = storyStart; i < end; i++) {
 
       if (i >= stories.length)
@@ -337,7 +368,7 @@ APP.Main = (function() {
       var story = document.createElement('div');
       story.setAttribute('id', 's-' + key);
       story.classList.add('story');
-      story.innerHTML = basicStoryTemplate;
+      story.innerHTML = loadingStoryTemplate;
       fragment.appendChild(story);
 
       APP.Data.getStoryById(stories[i], onStoryData.bind(this, key));
