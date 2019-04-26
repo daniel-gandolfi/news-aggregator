@@ -92,7 +92,7 @@ a {
   opacity: 0.54;
 }
 
-.details-active .story {
+.details-active main {
   background: #FFF;
   opacity: 0;
 }
@@ -111,6 +111,7 @@ main {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   z-index: 0;
+  transition: opacity 0.5s ease-out;
 }
 
 main.loading {
@@ -144,7 +145,7 @@ main.loading {
   position: relative;
   min-height: 90px;
   cursor: pointer;
-  transition: all 0.4s ease-out, opacity 0.5s ease-out;
+  /* transition: all 0.4s ease-out; */
   border-bottom: 1px solid #dedede;
 }
 
