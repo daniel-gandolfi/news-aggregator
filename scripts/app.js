@@ -111,26 +111,54 @@ APP.Main = (function() {
     var memoizationCollection = [null]
     return function(count){
       if (count > 0){
-        if (!memoizationCollection[count]){
-          memoizationCollection[count] = document.createDocumentFragment();
+        var memoizedValue = memoizationCollection[count];
+        if (!memoizedValue){
+          memoizedValue = memoizationCollection[count] = document.createDocumentFragment();
           if (count == 1) {
-            memoizationCollection[count].appendChild(_createLoadingStoryDetailCommentNode())
+            memoizedValue.appendChild(_createLoadingStoryDetailCommentNode())
           } else {
-            memoizationCollection[count].appendChild(_getLoadingCommentsNodes(count - 1));
-            memoizationCollection[count].appendChild(_createLoadingStoryDetailCommentNode());
+            memoizedValue.appendChild(_getLoadingCommentsNodes(count - 1));
+            memoizedValue.appendChild(_createLoadingStoryDetailCommentNode());
           }
         }
-        return memoizationCollection[count];
+        return memoizedValue;
       }
     } 
   })()
 
+
+  function loadComments(commentsElement, commentList) {
+    var containsLoadingElements = false;
+    var loadingCommentsAnimationFrameID = requestAnimationFrame(function() {
+      commentsElement.appendChild(_getLoadingCommentsNodes(3));
+      containsLoadingElements = true;
+    })
+    for (var k = 0; k < commentList.length; k++) {
+      // Update the comment with the live data.
+      APP.Data.getStoryComment(commentList[k], function(commentDetails) {
+        requestAnimationFrame(function(){
+          if (containsLoadingElements) {
+            containsLoadingElements = false;
+            while(commentsElement.children.length !== 1) {
+              commentsElement.removeChild(commentsElement.children[1]);
+            }
+          } else {
+            cancelAnimationFrame(loadingCommentsAnimationFrameID);
+          }
+          commentDetails.time *= 1000;
+          var comment = _createStoryDetailCommentNode(commentDetails.id, storyDetailsCommentTemplate(
+            commentDetails,
+            localeData
+          ));
+          commentsElement.appendChild(comment);
+        })
+      });
+    }
+  }
+
   function onStoryClick(details) {
 
     var storyDetails = $('sd-' + details.id);
-
-    // Wait a little time then show the story details.
-    setTimeout(showStory.bind(this, details.id), 60);
 
     // Create and append the story. A visual change...
     // perhaps that should be in a requestAnimationFrame?
@@ -139,57 +167,39 @@ APP.Main = (function() {
     // it inflates the DOM and I can only see one at once.
     if (!storyDetails) {
 
-      if (details.url)
+      if (details.url) {
         details.urlobj = new URL(details.url);
+      }
 
-      var comment;
       var commentsElement;
-      var storyHeader;
-      var storyContent;
 
       var storyDetailsHtml = storyDetailsTemplate(details);
-      var kids = details.kids;
+      var commentList = details.kids;
 
       storyDetails = document.createElement('section');
       storyDetails.setAttribute('id', 'sd-' + details.id);
       storyDetails.classList.add('story-details');
       storyDetails.innerHTML = storyDetailsHtml;
 
-      document.body.appendChild(storyDetails);
-
       commentsElement = storyDetails.querySelector('.js-comments');
-      storyHeader = storyDetails.querySelector('.js-header');
-      storyContent = storyDetails.querySelector('.js-content');
 
       var closeButton = storyDetails.querySelector('.js-close');
-      closeButton.addEventListener('click', hideStory.bind(this, details.id));
+      closeButton.addEventListener('click', function(){
+        _hideStory(details.id); 
+      });
 
-      var headerHeight = storyHeader.getBoundingClientRect().height;
-      storyContent.style.paddingTop = headerHeight + 'px';
 
-      if (typeof kids === 'undefined')
-        return;
-      // Create some loading elements
-      commentsElement.appendChild(_getLoadingCommentsNodes(3));
-      var containsLoadingElements = true;
-
-      for (var k = 0; k < kids.length; k++) {
-        // Update the comment with the live data.
-        APP.Data.getStoryComment(kids[k], function(commentDetails) {
-          if (containsLoadingElements) {
-            containsLoadingElements = false;
-            while(commentsElement.children.length !== 1) {
-              commentsElement.removeChild(commentsElement.children[1]);
-            }
-          }
-          commentDetails.time *= 1000;
-          var comment = _createStoryDetailCommentNode(commentDetails.id, storyDetailsCommentTemplate(
-            commentDetails,
-            localeData
-          ));
-          commentsElement.appendChild(comment);
-        });
+      if (commentList && commentList.length !== 0) {
+        loadComments(commentsElement, commentList);
       }
+
+      requestAnimationFrame(function(){
+        document.body.appendChild(storyDetails);
+        requestAnimationFrame(function(){
+          //var headerHeight = storyHeader.getBoundingClientRect().height;
+          requestAnimationFrame(showStory.bind(this, details.id));
+        })
+      })
     }
 
   }
@@ -202,89 +212,22 @@ APP.Main = (function() {
     inDetails = true;
 
     var storyDetails = $('#sd-' + id);
-    var left = null;
-    var translateDiff = null;
 
     if (!storyDetails)
       return;
 
-    document.body.classList.add('details-active');
-    storyDetails.style.opacity = 1;
-
-    function animate () {
-
-      // Set the left value if we don't have one already.
-      if (left === null) {
-        // Find out where it currently is.
-        translateDiff = left = +storyDetails.getBoundingClientRect().left;
-      }
-
-
-      // Now figure out where it needs to go.
-      translateDiff += -translateDiff * 0.1;
-      translateX = left - translateDiff;
-
-      // Set up the next bit of the animation if there is more to do.
-      if (Math.abs(translateDiff) > 0.5)
-        requestAnimationFrame(animate);
-      else
-        translateX = left;
-
-      // And update the styles. Wait, is this a read-write cycle?
-      // I hope I don't trigger a forced synchronous layout!
-      storyDetails.style.transform = "translateX( " + -translateX + 'px )';
-    }
-
-    // We want slick, right, so let's do a setTimeout
-    // every few milliseconds. That's going to keep
-    // it all tight. Or maybe we're doing visual changes
-    // and they should be in a requestAnimationFrame
-    requestAnimationFrame(animate);
+    storyDetails.classList.add("story-details--visible");
   }
 
-  function hideStory(id) {
+
+  function _hideStory(id){
 
     if (!inDetails)
       return;
-
+    inDetails = false; 
     var storyDetails = $('#sd-' + id);
-    var left;
-    var translateX, translateDiff;
 
-    document.body.classList.remove('details-active');
-    storyDetails.style.opacity = 0;
-
-    function animate () {
-     
-      if (left === undefined) {
-        // Find out where it currently is.
-        var mainPosition = main.getBoundingClientRect();
-        left = mainPosition.width
-        translateDiff = 0;
-      }
-
-      // Now figure out where it needs to go.
-      translateDiff += (left - translateDiff) * 0.1;
-      translateX = left - translateDiff;
-
-      // Set up the next bit of the animation if there is more to do.
-      if (left - translateDiff > 0.5) {
-        requestAnimationFrame(animate);
-      } else {
-        translateX = 0;
-        inDetails = false;
-      }
-
-      // And update the styles. Wait, is this a read-write cycle?
-      // I hope I don't trigger a forced synchronous layout!
-      storyDetails.style.transform = "translateX( " + -translateX + 'px )';
-    }
-
-    // We want slick, right, so let's do a setTimeout
-    // every few milliseconds. That's going to keep
-    // it all tight. Or maybe we're doing visual changes
-    // and they should be in a requestAnimationFrame
-    requestAnimationFrame(animate);
+    storyDetails.classList.remove("story-details--visible");
   }
 
   /**
