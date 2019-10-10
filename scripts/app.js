@@ -23,7 +23,6 @@ APP.Main = (function() {
   var storyStart = 0;
   var count = 15;
   var main = $('main');
-  var inDetails = false;
   var storyLoadCount = 0;
   var localeData = {
     data: {
@@ -34,35 +33,23 @@ APP.Main = (function() {
   };
 
   var tmplStory = $('#tmpl-story').textContent;
-  var tmplStoryDetails = $('#tmpl-story-details').textContent;
-  var tmplStoryDetailsComment = $('#tmpl-story-details-comment').textContent;
 
   if (typeof HandlebarsIntl !== 'undefined') {
     HandlebarsIntl.registerWith(Handlebars);
   } else {
-
     // Remove references to formatRelative, because Intl isn't supported.
     var intlRelative = /, {{ formatRelative time }}/;
     tmplStory = tmplStory.replace(intlRelative, '');
-    tmplStoryDetails = tmplStoryDetails.replace(intlRelative, '');
-    tmplStoryDetailsComment = tmplStoryDetailsComment.replace(intlRelative, '');
   }
 
   var storyTemplate =
       Handlebars.compile(tmplStory);
-  var storyDetailsTemplate =
-      Handlebars.compile(tmplStoryDetails);
-  var storyDetailsCommentTemplate =
-      Handlebars.compile(tmplStoryDetailsComment);
 
   var loadingStoryTemplate = storyTemplate({
     title: '...',
     score: '-',
     by: '...',
     time: 0
-  });
-  var loadingStoryDetailsCommentHtml = storyDetailsCommentTemplate({
-    by: '', text: 'Loading comment...'
   });
 
   /**
@@ -95,140 +82,7 @@ APP.Main = (function() {
       colorizeAndScaleStories();
   }
 
-  function _createStoryDetailCommentNode(id, innerHTML){
-    var commentNode = document.createElement('aside')
-    commentNode.id = "sdc-" + id;
-    commentNode.className = 'story-details__comment';
-    commentNode.innerHTML = innerHTML;
-    return commentNode;
-  }
-
-  function _createLoadingStoryDetailCommentNode(){
-    return _createStoryDetailCommentNode("loading", loadingStoryDetailsCommentHtml);
-  }
-
-  var _getLoadingCommentsNodes = (function _memoizationWrapper(){
-    var memoizationCollection = [null]
-    return function(count){
-      if (count > 0){
-        var memoizedValue = memoizationCollection[count];
-        if (!memoizedValue){
-          memoizedValue = memoizationCollection[count] = document.createDocumentFragment();
-          if (count == 1) {
-            memoizedValue.appendChild(_createLoadingStoryDetailCommentNode())
-          } else {
-            memoizedValue.appendChild(_getLoadingCommentsNodes(count - 1));
-            memoizedValue.appendChild(_createLoadingStoryDetailCommentNode());
-          }
-        }
-        return memoizedValue;
-      }
-    } 
-  })()
-
-
-  function loadComments(commentsElement, commentList) {
-    var containsLoadingElements = false;
-    var loadingCommentsAnimationFrameID = requestAnimationFrame(function() {
-      commentsElement.appendChild(_getLoadingCommentsNodes(3));
-      containsLoadingElements = true;
-    })
-    for (var k = 0; k < commentList.length; k++) {
-      // Update the comment with the live data.
-      APP.Data.getStoryComment(commentList[k], function(commentDetails) {
-        requestAnimationFrame(function(){
-          if (containsLoadingElements) {
-            containsLoadingElements = false;
-            while(commentsElement.children.length !== 1) {
-              commentsElement.removeChild(commentsElement.children[1]);
-            }
-          } else {
-            cancelAnimationFrame(loadingCommentsAnimationFrameID);
-          }
-          commentDetails.time *= 1000;
-          var comment = _createStoryDetailCommentNode(commentDetails.id, storyDetailsCommentTemplate(
-            commentDetails,
-            localeData
-          ));
-          commentsElement.appendChild(comment);
-        })
-      });
-    }
-  }
-
-  function onStoryClick(details) {
-
-    var storyDetails = $('sd-' + details.id);
-
-    // Create and append the story. A visual change...
-    // perhaps that should be in a requestAnimationFrame?
-    // And maybe, since they're all the same, I don't
-    // need to make a new element every single time? I mean,
-    // it inflates the DOM and I can only see one at once.
-    if (!storyDetails) {
-
-      if (details.url) {
-        details.urlobj = new URL(details.url);
-      }
-
-      var commentsElement;
-
-      var storyDetailsHtml = storyDetailsTemplate(details);
-      var commentList = details.kids;
-
-      storyDetails = document.createElement('section');
-      storyDetails.setAttribute('id', 'sd-' + details.id);
-      storyDetails.classList.add('story-details');
-      storyDetails.innerHTML = storyDetailsHtml;
-
-      commentsElement = storyDetails.querySelector('.js-comments');
-
-      var closeButton = storyDetails.querySelector('.js-close');
-      closeButton.addEventListener('click', function(){
-        _hideStory(details.id); 
-      });
-
-
-      if (commentList && commentList.length !== 0) {
-        loadComments(commentsElement, commentList);
-      }
-
-      requestAnimationFrame(function(){
-        document.body.appendChild(storyDetails);
-        requestAnimationFrame(function(){
-          //var headerHeight = storyHeader.getBoundingClientRect().height;
-          requestAnimationFrame(showStory.bind(this, details.id));
-        })
-      })
-    }
-
-  }
-
-  function showStory(id) {
-
-    if (inDetails)
-      return;
-
-    inDetails = true;
-
-    var storyDetails = $('#sd-' + id);
-
-    if (!storyDetails)
-      return;
-
-    storyDetails.classList.add("story-details--visible");
-  }
-
-
-  function _hideStory(id){
-
-    if (!inDetails)
-      return;
-    inDetails = false; 
-    var storyDetails = $('#sd-' + id);
-
-    storyDetails.classList.remove("story-details--visible");
-  }
+  var onStoryClick = APP.StoryDetails.show;
 
   /**
    * Does this really add anything? Can we do this kind

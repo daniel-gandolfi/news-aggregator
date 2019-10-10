@@ -40,7 +40,14 @@ limitations under the License.
 
   <script id="tmpl-story-details" type="text/x-handlebars-template">
     <header class="story-details__header js-header">
-      <h1 class="story-details__title">{{ title }}{{#if url }} <a class="story-details__title-link" href="{{url}}">({{ urlobj.hostname }})</a>{{/if}}</h1>
+      <h1 class="story-details__title">
+        {{ title }}
+        {{#if url }} 
+          <a class="story-details__title-link" href="{{url}}">
+            ({{ urlobj.hostname }})
+          </a>
+        {{/if}}
+      </h1>
       <button class="story-details__close js-close">Close</button>
       <section class="story-details__meta">
         Posted by {{ by }}{{#if time }}, {{ formatRelative time }}{{/if }}
@@ -58,11 +65,6 @@ limitations under the License.
       </section>
       {{/if}}
     </section>
-  </script>
-
-  <script id="tmpl-story-details-comment" type="text/x-handlebars-template">
-    <p class="story-details-comment__author">{{ by }}{{#if time }}, {{ formatRelative time }}{{/if }}</p>
-    <div class="story-details-comment__text">{{{ text }}}</div>
   </script>
 
   <link href='http://fonts.googleapis.com/css?family=Roboto:400,500,700' rel='stylesheet' type='text/css'>
@@ -90,7 +92,20 @@ limitations under the License.
 
     <script src="scripts/namespace.js"></script>
     <script src="scripts/data.js"></script>
+    <script src="scripts/StoryDetails.js"></script>
     <script src="scripts/app.js"></script>
 
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          // registration worked
+          console.log('Registration succeeded. Scope is ' + reg.scope);
+        }).catch((error) => {
+          // registration failed
+          console.log('Registration failed with ' + error);
+        });
+      }
+    </script>
   </body>
 </html>
