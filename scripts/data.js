@@ -39,8 +39,10 @@ APP.Data = (function() {
 
     var storyCommentURL = HN_STORYDETAILS_URL.replace(/\[ID\]/, id);
 
-    request(storyCommentURL, function(evt) {
-      callback(evt.target.response);
+    return request(storyCommentURL, function(evt) {
+      var commentDetail = evt.target.response;
+      commentDetail.time *= 1000;
+      callback(Object.assign({},commentDetail));
     });
   }
 
@@ -50,6 +52,7 @@ APP.Data = (function() {
     xhr.responseType = 'json';
     xhr.onload = callback;
     xhr.send();
+    return xhr;
   }
 
   return {

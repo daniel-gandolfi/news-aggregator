@@ -1,4 +1,5 @@
 APP.StoryDetails = (function () {
+    var TRANSITION_END_EVENT_NAME = "transitionend"
     var localeData = {
       data: {
         intl: {
@@ -10,7 +11,11 @@ APP.StoryDetails = (function () {
     var STORY_DETAILS_CONTAINER_ID = "story-detail-container"
 
     var currentVisibleStoryID = undefined;
-    var isOpening = false;
+    var isExecutingOpeningAnimation = false;
+    var commentMap = {};
+
+    var storyDetailContainerDOM;
+
     var tmplStoryDetails = document.getElementById('tmpl-story-details').textContent;
     var tmplformatTimeRelative = ", {{ formatRelative time }}";
 
@@ -73,29 +78,36 @@ APP.StoryDetails = (function () {
         }
     })()
 
+
+
+    function _removeCommentsFromContainer(commentContainer) {
+        while (commentContainer.children.length !== 1) {
+            commentContainer.removeChild(commentContainer.children[1]);
+        }
+    }
+
     function loadComments(commentsElement, commentList) {
-        var containsLoadingElements = false;
-        var loadingCommentsAnimationFrameID = requestAnimationFrame(function () {
-            commentsElement.appendChild(_getLoadingCommentsNodes(3));
-            containsLoadingElements = true;
-        })
         for (var k = 0; k < commentList.length; k++) {
             // Update the comment with the live data.
-            APP.Data.getStoryComment(commentList[k], function (commentDetails) {
-                requestAnimationFrame(function () {
-                    if (containsLoadingElements) {
-                        containsLoadingElements = false;
-                        while (commentsElement.children.length !== 1) {
-                            commentsElement.removeChild(commentsElement.children[1]);
-                        }
-                    } else {
-                        cancelAnimationFrame(loadingCommentsAnimationFrameID);
-                    }
-                    commentDetails.time *= 1000;
-                    var comment = _createStoryDetailCommentNode(commentDetails.id, commentDetails);
-                    commentsElement.appendChild(comment);
-                })
+            var xhr = APP.Data.getStoryComment(commentList[k], function (commentDetails) {
+                var id = commentDetails.id;
+                if (!isExecutingOpeningAnimation) {
+                    requestAnimationFrame(function () {
+                        commentMap[id].details = commentDetails;
+                        var comment = commentMap[id].node = _createStoryDetailCommentNode(id, commentDetails);
+                        commentsElement.appendChild(comment);
+                    })
+                } else {
+                    commentMap[id].node = _createStoryDetailCommentNode(id, commentDetails);
+                    commentMap[id].details = commentDetails;
+                }
             });
+            commentMap[commentList[k]] = {
+                id: commentList[k],
+                node: null,
+                details: null,
+                xhr: xhr
+            }
         }
     }
 
@@ -141,7 +153,6 @@ APP.StoryDetails = (function () {
 
             var commentsElement;
 
-            var storyDetailContainerDOM = document.getElementById(STORY_DETAILS_CONTAINER_ID)
             if (!storyDetailContainerDOM) {
                 storyDetailContainerDOM = createContainerDOM(storyDetails);
 
@@ -174,6 +185,7 @@ APP.StoryDetails = (function () {
                 meta.innerText = "Posted by " + storyDetails.by + formatTimeRelativeTemplate(storyDetails);
             }
 
+
             if (storyDetails.kids) {
                 var currentCommentSection = storyDetailContainerDOM.getElementsByClassName("story-details__comments")[0];
                 if (currentCommentSection) {
@@ -185,20 +197,45 @@ APP.StoryDetails = (function () {
                 }
             } else {
                 var commentSection = storyDetailContainerDOM.getElementsByClassName("story-details__comments")[0];
-                commentSection.parentNode.removeChild(commentSection);
+                if (commentSection) {
+                    commentSection.parentNode.removeChild(commentSection);
+                }
             }
 
             var commentList = storyDetails.kids;
+            var hasComments = commentList && commentList.length !== 0;
             commentsElement = storyDetailContainerDOM.querySelector('.js-comments');
-            if (commentList && commentList.length !== 0) {
+            if (hasComments) {
                 loadComments(commentsElement, commentList);
+                commentsElement.appendChild(_getLoadingCommentsNodes(Math.max(3, commentList.length)));
             }
 
             requestAnimationFrame(function () {
                 document.body.appendChild(storyDetailContainerDOM);
+                isExecutingOpeningAnimation = true;
                 requestAnimationFrame(function(){
                     storyDetailContainerDOM.classList.add("story-details--visible");
-                })
+                });
+                storyDetailContainerDOM.addEventListener(TRANSITION_END_EVENT_NAME, (function loadCommentsAfterOpeningTransition(event) {
+                    if (event.propertyName === "transform") {
+                        //wait next frame
+                        requestAnimationFrame(function(){
+                            if (hasComments) {
+                                _removeCommentsFromContainer(commentsElement);
+                                Object.values(commentMap).forEach(function(commentData){
+                                    var commentDetails = commentData.details;
+                                    commentsElement.appendChild(
+                                        commentData.node || 
+                                        _createStoryDetailCommentNode(commentDetails.id, commentDetails)
+                                    );
+                                })
+                            }
+                            isExecutingOpeningAnimation = false;
+
+                        });
+                        storyDetailContainerDOM.removeEventListener(TRANSITION_END_EVENT_NAME, loadCommentsAfterOpeningTransition)
+                    }
+                }));
             })
         }
 
@@ -211,16 +248,27 @@ APP.StoryDetails = (function () {
         onStoryClick(details)
     }
 
-
-    function _hideStory(id) {
+    function _onExitingTransitionEnd() {
+        storyDetailContainerDOM.parentNode.removeChild(storyDetailContainerDOM);
+        storyDetailContainerDOM.removeEventListener(TRANSITION_END_EVENT_NAME, _onExitingTransitionEnd);
+    }
+    function _hideStory() {
 
         if (currentVisibleStoryID === undefined) {
             return;
         }
         currentVisibleStoryID = undefined;
-        var storyDetails = document.getElementById(STORY_DETAILS_CONTAINER_ID);
+        isExecutingOpeningAnimation = false;
+        Object.values(commentMap).forEach(function(commentData){
+            if (commentData.xhr.readyState !== XMLHttpRequest.DONE) {
+                commentData.xhr.abort();
+            }
+        })
+        commentMap = {};
 
-        storyDetails.classList.remove("story-details--visible");
+        storyDetailContainerDOM.classList.remove("story-details--visible");
+
+        storyDetailContainerDOM.addEventListener(TRANSITION_END_EVENT_NAME, _onExitingTransitionEnd)
     }
 
     function hide() {
