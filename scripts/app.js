@@ -93,7 +93,7 @@ APP.Main = (function() {
     var storyElements = document.querySelectorAll('.story');
       // It does seem awfully broad to change all the
       // colors every time!
-      requestAnimationFrame(function(){
+    requestAnimationFrame(function () {
       var height = main.offsetHeight;
       var bodyTop = document.body.getBoundingClientRect().top;
       Array.prototype.map.call(storyElements, function(story){
@@ -130,31 +130,36 @@ APP.Main = (function() {
     });
   }
 
-  main.addEventListener('scroll', function() {
-
+  main.addEventListener('scroll', (function () {
     var header = $('header');
     var headerTitles = header.querySelector('.header__title-wrapper');
-    var scrollTopCapped = Math.min(70, main.scrollTop);
-    var scaleString = 'scale(' + (1 - (scrollTopCapped / 300)) + ')';
+    return function () {
+      requestAnimationFrame(function () {
+        var scrollTop = main.scrollTop;
+        var scrollHeight = main.scrollHeight;
+        var mainOffsetHeight = main.offsetHeight;
+        var scrollTopCapped = Math.min(70, scrollTop);
+        var scaleString = 'scale(' + (1 - (scrollTopCapped / 300)) + ')';
 
-    colorizeAndScaleStories();
+        colorizeAndScaleStories();
 
-    header.style.height = (156 - scrollTopCapped) + 'px';
-    headerTitles.style.webkitTransform = scaleString;
-    headerTitles.style.transform = scaleString;
+        header.style.height = (156 - scrollTopCapped) + 'px';
+        headerTitles.style.webkitTransform = scaleString;
+        headerTitles.style.transform = scaleString;
 
-    // Add a shadow to the header.
-    if (main.scrollTop > 70)
-      document.body.classList.add('raised');
-    else
-      document.body.classList.remove('raised');
+        // Add a shadow to the header.
+        if (scrollTop > 70)
+          document.body.classList.add('raised');
+        else
+          document.body.classList.remove('raised');
 
-    // Check if we need to load the next batch of stories.
-    var loadThreshold = (main.scrollHeight - main.offsetHeight -
-        LAZY_LOAD_THRESHOLD);
-    if (main.scrollTop > loadThreshold)
-      loadStoryBatch();
-  });
+        // Check if we need to load the next batch of stories.
+        var loadThreshold = (scrollHeight - mainOffsetHeight - LAZY_LOAD_THRESHOLD);
+        if (scrollTop > loadThreshold)
+          loadStoryBatch();
+      })
+    };
+  })(), APP.featureDetection.supportsPassiveListeners() ? { passive: true } : null);
 
   function loadStoryBatch() {
 
