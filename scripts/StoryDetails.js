@@ -220,18 +220,20 @@ APP.StoryDetails = (function () {
                     if (event.propertyName === "transform") {
                         //wait next frame
                         requestAnimationFrame(function(){
-                            if (hasComments) {
-                                _removeCommentsFromContainer(commentsElement);
-                                Object.values(commentMap).forEach(function(commentData){
-                                    var commentDetails = commentData.details;
-                                    commentsElement.appendChild(
-                                        commentData.node || 
-                                        _createStoryDetailCommentNode(commentDetails.id, commentDetails)
-                                    );
-                                })
-                            }
-                            isExecutingOpeningAnimation = false;
+                            requestAnimationFrame(function(){
+                                if (hasComments) {
+                                    _removeCommentsFromContainer(commentsElement);
+                                    Object.values(commentMap).forEach(function(commentData){
+                                        var commentDetails = commentData.details;
+                                        commentsElement.appendChild(
+                                            commentData.node || 
+                                            _createStoryDetailCommentNode(commentDetails.id, commentDetails)
+                                        );
+                                    })
+                                }
+                                isExecutingOpeningAnimation = false;
 
+                            });
                         });
                         storyDetailContainerDOM.removeEventListener(TRANSITION_END_EVENT_NAME, loadCommentsAfterOpeningTransition)
                     }
