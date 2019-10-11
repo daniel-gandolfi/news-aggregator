@@ -64,7 +64,10 @@ a {
   background: #FF8F00;
   color: #FFF;
   font-size: 40px;
+  /*
+  useless
   font-weight: 400;
+  */
   padding: 0 0 0 72px;
   z-index: 1;
   position: fixed;
@@ -167,7 +170,10 @@ main.loading {
 .story-details__by {
   color: rgba(0,0,0,0.54);
   font-size: 14px;
+  /*
+  useless
   font-weight: 400;
+  */
   line-height: 24px;
 }
 
@@ -220,12 +226,15 @@ main.loading {
   height: 100%;
   background: white;
   z-index: 2;
+  /*
+  Commented as they are useless
   box-shadow:
       0px 2px 5px 0px rgba(0, 0, 0, 0.06),
       0px 2px 5px 0px rgba(0, 0, 0, 0.08),
       0px 2px 7px 0px rgba(0, 0, 0, 0.10);
 
   overflow: hidden;
+  */
   transition: opacity 0.3s ease-out, transform 0.2s cubic-bezier(0, 0, .9, 1);
   will-change: transform, opacity;
   transform: translateX(0) translateZ(0);
@@ -256,6 +265,11 @@ main.loading {
   line-height: 24px;
   will-change: opacity;
   padding-left: 72px;
+  height: 98px;
+  margin: 0;
+  display: flex;
+  flex-flow: row;
+  align-items: center;
 }
 
 .story-details__title-link {
@@ -270,13 +284,7 @@ main.loading {
 }
 
 .story-details__header {
-  padding: 16px 16px 64px 0;
   background: #FFA000;
-/*
-  position: absolute;
-  left: 0;
-  top: 0;
-*/
   position: relative;
   width: 100%;
   z-index: 1;
@@ -287,8 +295,8 @@ main.loading {
   height: 48px;
   position: absolute;
   left: 16px;
-  top: 50%;
-  margin-top: -48px;
+  /* title_height(98)/2 - height(48)/2*/
+  top: 25px;
   background: url(../images/ic_close_24px.svg) center center no-repeat;
   border: none;
   text-indent: -10000px;
@@ -298,9 +306,6 @@ main.loading {
 .story-details__meta {
   background: #FFC107;
   height: 40px;
-  position: absolute;
-  bottom: 0;
-  left: 0;
   width: 100%;
   padding-left: 72px;
   line-height: 40px;
