@@ -129,32 +129,43 @@ APP.Main = (function() {
       })
     });
   }
-
+  
   main.addEventListener('scroll', (function () {
     var header = $('header');
     var headerTitles = header.querySelector('.header__title-wrapper');
+    var lastScrollTop;
+    var capScroll = function(scrollTop) {
+      return Math.min(70, scrollTop);
+    }
     return function () {
       requestAnimationFrame(function () {
         var scrollTop = main.scrollTop;
         var scrollHeight = main.scrollHeight;
         var mainOffsetHeight = main.offsetHeight;
-        var scrollTopCapped = Math.min(70, scrollTop);
-        var scaleString = 'scale(' + (1 - (scrollTopCapped / 300)) + ')';
+        var scrollTopCapped = capScroll(scrollTop);
 
-        header.style.height = (156 - scrollTopCapped) + 'px';
-        headerTitles.style.webkitTransform = scaleString;
-        headerTitles.style.transform = scaleString;
-
-        // Add a shadow to the header.
-        if (scrollTop > 70)
-          document.body.classList.add('raised');
-        else
-          document.body.classList.remove('raised');
-
+        var scrollCappedChanged = !lastScrollTop || capScroll(lastScrollTop) !== scrollTopCapped;
+        if (scrollCappedChanged) {
+          header.style.height = (156 - scrollTopCapped) + 'px';
+          var scaleString = 'scale(' + (1 - (scrollTopCapped / 300)) + ')';
+          headerTitles.style.webkitTransform = scaleString;
+          headerTitles.style.transform = scaleString;
+        }
+        if (lastScrollTop <= 70 && scrollTop > 70 ||
+          lastScrollTop > 70 && scrollTop <= 70 ) {
+          // Add a shadow to the header.
+          if (scrollTop > 70)
+            document.body.classList.add('raised');
+          else
+            document.body.classList.remove('raised');
+        }
         // Check if we need to load the next batch of stories.
         var loadThreshold = (scrollHeight - mainOffsetHeight - LAZY_LOAD_THRESHOLD);
-        if (scrollTop > loadThreshold)
+        if (scrollTop > loadThreshold) {
           loadStoryBatch();
+        }
+
+        lastScrollTop = scrollTop;
       })
     };
   })(), APP.featureDetection.supportsPassiveListeners() ? { passive: true } : null);
