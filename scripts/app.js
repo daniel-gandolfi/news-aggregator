@@ -72,8 +72,6 @@ APP.Main = (function () {
     var html = storyTemplate(details);
     storyCopy.innerHTML = html;
     storyCopy.addEventListener('click', onStoryClick.bind(this, details));
-    //TODO: remove
-    storyCopy.classList.add('clickable');
 
     story.parentNode.replaceChild(storyCopy, story);
     // Tick down. When zero we can batch in the next load.
