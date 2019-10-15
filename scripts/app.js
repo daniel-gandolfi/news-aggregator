@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-APP.Main = (function() {
+APP.Main = (function () {
 
   var LAZY_LOAD_THRESHOLD = 300;
   var $ = document.querySelector.bind(document);
@@ -31,6 +31,7 @@ APP.Main = (function() {
       }
     }
   };
+  var visibleStoryElements = [];
 
   var tmplStory = $('#tmpl-story').textContent;
 
@@ -43,7 +44,7 @@ APP.Main = (function() {
   }
 
   var storyTemplate =
-      Handlebars.compile(tmplStory);
+    Handlebars.compile(tmplStory);
 
   var loadingStoryTemplate = storyTemplate({
     title: '...',
@@ -58,7 +59,7 @@ APP.Main = (function() {
    * that should really be handled more delicately, and
    * probably in a requestAnimationFrame callback.
    */
-  function onStoryData (key, details) {
+  function onStoryData(key, details) {
 
     // This seems odd. Surely we could just select the story
     // directly rather than looping through all of them.
@@ -71,6 +72,7 @@ APP.Main = (function() {
     var html = storyTemplate(details);
     storyCopy.innerHTML = html;
     storyCopy.addEventListener('click', onStoryClick.bind(this, details));
+    //TODO: remove
     storyCopy.classList.add('clickable');
 
     story.parentNode.replaceChild(storyCopy, story);
@@ -84,24 +86,47 @@ APP.Main = (function() {
 
   var onStoryClick = APP.StoryDetails.show;
 
-  /**
-   * Does this really add anything? Can we do this kind
-   * of work in a cheaper way?
-   */
-  function colorizeAndScaleStories() {
+  function _onElementEnterView(el) {
+    if (visibleStoryElements.indexOf(el) === -1) {
+      visibleStoryElements.push(el)
+    }
+  }
+  function _onElementExitView(el) {
+    var index = visibleStoryElements.indexOf(el)
+    if (index !== -1) {
+      visibleStoryElements.splice(index, 1);
+    }
+  }
+  var observer = new IntersectionObserver(function (intersectionObserverEntryList) {
+    intersectionObserverEntryList.forEach(function (intersectionObserverEntry) {
+      var boundingClientRect = intersectionObserverEntry.boundingClientRect;
+      var rootBounds = intersectionObserverEntry.rootBounds;
+      var isVisible = boundingClientRect.top > 0 && 
+        boundingClientRect.top < rootBounds.bottom;
+      if (isVisible) {
+        _onElementEnterView(intersectionObserverEntry.target);
+      } else {
+        _onElementExitView(intersectionObserverEntry.target);
+      }
+    })
+  });
+  function mutationObserver(mutationRecordList) {
+    mutationRecordList.forEach(function (mutationRecord) {
+      mutationRecord.removedNodes.forEach(_onElementExitView)
+      mutationRecord.addedNodes.forEach(observer.observe.bind(observer))
+    })
+  }
 
-    var storyElements = document.querySelectorAll('.story');
-      // It does seem awfully broad to change all the
-      // colors every time!
+  function colorizeAndScaleStories() {
     requestAnimationFrame(function () {
       var height = main.offsetHeight;
       var bodyTop = document.body.getBoundingClientRect().top;
-      Array.prototype.map.call(storyElements, function(story){
+      Array.prototype.map.call(visibleStoryElements, function (story) {
         var score = story.querySelector('.story__score');
         var title = story.querySelector('.story__title');
 
         // Base the cale on the y position of the score.
-        
+
         var scoreBounds = score.getBoundingClientRect();
         var scoreLocation = scoreBounds.top - bodyTop;
         var scale = Math.min(1, 1 - (0.05 * ((scoreLocation - 170) / height)));
@@ -120,7 +145,7 @@ APP.Main = (function() {
           saturation,
           opacity
         }
-      }).forEach(function(storyComputedData){
+      }).forEach(function (storyComputedData) {
         var title = storyComputedData.title;
         var score = storyComputedData.score;
         score.style.transform = "scale(" + storyComputedData.scale + ")";
@@ -129,12 +154,12 @@ APP.Main = (function() {
       })
     });
   }
-  
+
   main.addEventListener('scroll', (function () {
     var header = $('header');
     var headerTitles = header.querySelector('.header__title-wrapper');
     var lastScrollTop;
-    var capScroll = function(scrollTop) {
+    var capScroll = function (scrollTop) {
       return Math.min(70, scrollTop);
     }
     return function () {
@@ -152,7 +177,7 @@ APP.Main = (function() {
           headerTitles.style.transform = scaleString;
         }
         if (lastScrollTop <= 70 && scrollTop > 70 ||
-          lastScrollTop > 70 && scrollTop <= 70 ) {
+          lastScrollTop > 70 && scrollTop <= 70) {
           // Add a shadow to the header.
           if (scrollTop > 70)
             document.body.classList.add('raised');
@@ -204,10 +229,12 @@ APP.Main = (function() {
   }
 
   // Bootstrap in the stories.
-  APP.Data.getTopStories(function(data) {
+  APP.Data.getTopStories(function (data) {
     stories = data;
     loadStoryBatch();
     main.classList.remove('loading');
+    visibleStoryElements = [];
+    new MutationObserver(mutationObserver).observe(main, { childList: true })
   });
 
 })();
