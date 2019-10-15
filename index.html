@@ -26,9 +26,24 @@ limitations under the License.
 
   <script src="third_party/handlebars-v3.0.0.js"></script>
   <script>
-  if (typeof window.Intl !== 'undefined') {
-    document.write('<script src="third_party/handlebars-intl.min.js"><\/script>');
-  }
+    (function(){
+      var loadScript = function(url) {
+        var script = document.createElement("script")
+        script.src = url;
+        document.body.appendChild(script);
+      }
+      if (typeof window.Intl !== 'undefined') {
+        if (document.readyState !== "loading") {
+          loadScript("third_party/handlebars-intl.min.js")
+        } else {
+          document.addEventListener("readystatechange", function(){
+            if (document.readyState !== "loading") {
+              loadScript("third_party/handlebars-intl.min.js");
+            }
+          })
+        }
+      }
+    })()
   </script>
 
   <script id="tmpl-story" type="text/x-handlebars-template">
