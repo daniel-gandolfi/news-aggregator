@@ -25,26 +25,6 @@ limitations under the License.
   <meta name="theme-color" content="#FF6F00">
 
   <script src="third_party/handlebars-v3.0.0.js"></script>
-  <script>
-    (function(){
-      var loadScript = function(url) {
-        var script = document.createElement("script")
-        script.src = url;
-        document.body.appendChild(script);
-      }
-      if (typeof window.Intl !== 'undefined') {
-        if (document.readyState !== "loading") {
-          loadScript("third_party/handlebars-intl.min.js")
-        } else {
-          document.addEventListener("readystatechange", function(){
-            if (document.readyState !== "loading") {
-              loadScript("third_party/handlebars-intl.min.js");
-            }
-          })
-        }
-      }
-    })()
-  </script>
 
   <script id="tmpl-story" type="text/x-handlebars-template">
     <h1 class="story__title">{{ title }}</h1>
@@ -109,7 +89,6 @@ limitations under the License.
     <script src="scripts/featureDetection.js"></script>
     <script src="scripts/data.js"></script>
     <script src="scripts/StoryDetails.js"></script>
-    <script src="scripts/app.js"></script>
 
     <script>
       if ('serviceWorker' in navigator) {
@@ -122,6 +101,36 @@ limitations under the License.
           console.log('Registration failed with ' + error);
         });
       }
+
+      (function(){
+        var loadScript = function(url) {
+          var script = document.createElement("script");
+          script.src = url;
+          document.body.appendChild(script);
+        };
+        var scriptsToLoad = [
+          "scripts/StoryDetails.js",
+          "scripts/app.js"
+        ];
+        if (typeof window.Intl !== 'undefined') {
+          scriptsToLoad.splice(
+            0,
+            0,
+            "third_party/handlebars-intl.min.js"
+          );
+          if (document.readyState !== "loading") {
+            scriptsToLoad.forEach(loadScript);
+          } else {
+            document.addEventListener("readystatechange", function(){
+              if (document.readyState !== "loading") {
+                scriptsToLoad.forEach(loadScript);
+              }
+            })
+          }
+        } else {
+          scriptsToLoad.forEach(loadScript);
+        }
+      })()
     </script>
   </body>
 </html>
