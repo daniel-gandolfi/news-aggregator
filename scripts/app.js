@@ -20,10 +20,8 @@ APP.Main = (function () {
   var $ = document.querySelector.bind(document);
 
   var stories = null;
-  var storyStart = 0;
   var STORIES_TO_LOAD_IN_BATCH = 15;
   var main = $('main');
-  var storyLoadCount = 0;
   var localeData = {
     data: {
       intl: {
@@ -74,7 +72,6 @@ APP.Main = (function () {
 
     loadingStoryNode.parentNode.replaceChild(storyNode, loadingStoryNode);
     // Tick down. When zero we can batch in the next load.
-    storyLoadCount--;
 
   }
 
@@ -298,32 +295,37 @@ APP.Main = (function () {
 		})
 	}
 
-  function loadStoryBatch() {
-    if (storyLoadCount > 0)
-      return;
+	var loadStoryBatch = (function _loadStoryBatchWrapper() {
+		var storyLoadCount;
+		var storyStart = 0;
+		return (function _loadStoryBatch() {
+			if (storyLoadCount > 0)
+				return;
 
-    storyLoadCount = STORIES_TO_LOAD_IN_BATCH;
+			storyLoadCount = STORIES_TO_LOAD_IN_BATCH;
 
-    var end = storyStart + STORIES_TO_LOAD_IN_BATCH;
+			var end = storyStart + STORIES_TO_LOAD_IN_BATCH;
 
-		var fragment = document.createDocumentFragment();
-    var promiseList = stories.slice(storyStart, end).map(function (storyId) {
-    	return new Promise(function (resolve, reject) {
-				fragment.appendChild(createLoadingStoryNode(storyId.toString()));
-				APP.Data.getStoryById(storyId, function (storyData) {
-					requestAnimationFrame(function () {
-						onStoryData(storyId, storyData);
-						resolve(storyData);
-					})
-				});
-			})
+			var fragment = document.createDocumentFragment();
+			var promiseList = stories.slice(storyStart, end).map(function (storyId) {
+				return new Promise(function (resolve, reject) {
+					fragment.appendChild(createLoadingStoryNode(storyId.toString()));
+					APP.Data.getStoryById(storyId, function (storyData) {
+						requestAnimationFrame(function () {
+							onStoryData(storyId, storyData);
+							storyLoadCount--;
+							resolve(storyData);
+						})
+					});
+				})
+			});
+
+			storyStart += STORIES_TO_LOAD_IN_BATCH;
+			main.appendChild(fragment);
+
+			return Promise.all(promiseList);
 		});
-
-		storyStart += STORIES_TO_LOAD_IN_BATCH;
-		main.appendChild(fragment);
-
-		return Promise.all(promiseList);
-  }
+	})();
 
   // Bootstrap in the stories.
   APP.Data.getTopStories(function (data) {
