@@ -21,7 +21,7 @@ APP.Main = (function () {
 
   var stories = null;
   var storyStart = 0;
-  var count = 15;
+  var STORIES_TO_LOAD_IN_BATCH = 15;
   var main = $('main');
   var storyLoadCount = 0;
   var localeData = {
@@ -76,9 +76,6 @@ APP.Main = (function () {
     // Tick down. When zero we can batch in the next load.
     storyLoadCount--;
 
-    // Colorize on complete.
-    if (storyLoadCount === 0)
-      colorizeAndScaleStories();
   }
 
   var onStoryClick = APP.StoryDetails.show;
@@ -115,97 +112,139 @@ APP.Main = (function () {
 
   var scrollListeners = [];
 
-  function colorizeAndScaleStories(currentScroll, totalHeight, elementHeight) {
-    var height = elementHeight;
-    var bodyTop = 0;
-    Array.prototype.map.call(visibleStoryElements, function (story) {
-      var score = story.querySelector('.story__score');
-      var title = story.querySelector('.story__title');
+	var colorizeAndScaleStoriesListener = (function createColorizeAndScaleStoriesListener() {
+		var isExecuting = false;
+		return {
+    	read: function (currentScroll, totalHeight, elementHeight) {
+				if (isExecuting) {
+					return null;
+				}
+				isExecuting = true;
+				var bodyTop = 0;
+				var height = elementHeight;
+				var elementsData = Array.prototype.map.call(visibleStoryElements, function (story) {
+					var score = story.querySelector('.story__score');
+					var title = story.querySelector('.story__title');
 
-      // Base the cale on the y position of the score.
+					// Base the cale on the y position of the score.
 
-      var scoreBounds = score.getBoundingClientRect();
-      var scoreLocation = scoreBounds.top - 0;
-      var scale = Math.min(1, 1 - (0.05 * ((scoreLocation - 170) / height)));
-      var opacity = Math.min(1, 1 - (0.5 * ((scoreLocation - 170) / height)));
+					var scoreBounds = score.getBoundingClientRect();
+					var scoreLocation = scoreBounds.top - 0;
+					var scale = Math.min(1, 1 - (0.05 * ((scoreLocation - 170) / height)));
+					var opacity = Math.min(1, 1 - (0.5 * ((scoreLocation - 170) / height)));
 
-      var diameter = scale * 40;
+					var diameter = scale * 40;
 
-      // Now figure out how wide it is and use that to saturate it.
-      var saturation = (100 * ((diameter - 38) / 2));
+					// Now figure out how wide it is and use that to saturate it.
+					var saturation = (100 * ((diameter - 38) / 2));
 
-      return {
-        story,
-        score,
-        title,
-        diameter,
-        saturation,
-        opacity
-      }
-    }).forEach(function (storyComputedData) {
-      var title = storyComputedData.title;
-      var score = storyComputedData.score;
-      score.style.transform = "scale(" + storyComputedData.scale + ")";
-      //TODO: convert in filter as backgroundColor triggers layout
-      score.style.backgroundColor = 'hsl(42, ' + storyComputedData.saturation + '%, 50%)';
-      title.style.opacity = storyComputedData.opacity;
-    })
-  }
-
-  var headerListener = (function(){
-    var header = $('header');
-    var headerTitles = header.querySelector('.header__title-wrapper');
-    var lastScrollTop;
-    var capScroll = function (scrollTop) {
-      return Math.min(70, scrollTop);
-    };
-    return function (currentScroll, totalHeight, elementHeight) {
-      var scrollTop = currentScroll;
-      var scrollHeight = totalHeight;
-      var mainOffsetHeight = elementHeight;
-      var scrollTopCapped = capScroll(scrollTop);
-
-      var scrollCappedChanged = !lastScrollTop || capScroll(lastScrollTop) !== scrollTopCapped;
-      if (scrollCappedChanged) {
-        header.style.height = (156 - scrollTopCapped) + 'px';
-        var scaleString = 'scale(' + (1 - (scrollTopCapped / 300)) + ')';
-        headerTitles.style.webkitTransform = scaleString;
-        headerTitles.style.transform = scaleString;
-      }
-      if (lastScrollTop <= 70 && scrollTop > 70 ||
-        lastScrollTop > 70 && scrollTop <= 70) {
-        // Add a shadow to the header.
-        if (scrollTop > 70)
-          document.body.classList.add('raised');
-        else
-          document.body.classList.remove('raised');
-      }
-      // Check if we need to load the next batch of stories.
-      var loadThreshold = (scrollHeight - mainOffsetHeight - LAZY_LOAD_THRESHOLD);
-      if (scrollTop > loadThreshold) {
-        loadStoryBatch();
-      }
-
-      lastScrollTop = scrollTop;
-    };
+					return {
+						story,
+						score,
+						title,
+						diameter,
+						saturation,
+						opacity
+					}
+				});
+				return {
+					elementsData: elementsData
+				}
+			},
+			write: function (readData) {
+    		if (readData) {
+					readData.elementsData.forEach(function (storyComputedData) {
+						var title = storyComputedData.title;
+						var score = storyComputedData.score;
+						score.style.transform = "scale(" + storyComputedData.scale + ")";
+						//TODO: convert in filter as backgroundColor triggers layout
+						score.style.backgroundColor = 'hsl(42, ' + storyComputedData.saturation + '%, 50%)';
+						title.style.opacity = storyComputedData.opacity;
+					});
+					isExecuting = false;
+				}
+			}
+		}
   })();
 
+  var createHeaderListener = function(){
+		var header = $('header');
+		var headerTitles = header.querySelector('.header__title-wrapper');
+		var lastScrollTop;
+		var capScroll = function (scrollTop) {
+			return Math.min(70, scrollTop);
+		};
+
+		return {
+			read: function (currentScroll, totalHeight, elementHeight) {
+				var scrollTop = currentScroll;
+				var scrollHeight = totalHeight;
+				var mainOffsetHeight = elementHeight;
+				var scrollTopCapped = capScroll(scrollTop);
+				var scrollCappedChanged = !lastScrollTop || capScroll(lastScrollTop) !== scrollTopCapped;
+
+				return {
+					scrollTopCapped:scrollTopCapped,
+					scrollCappedChanged: scrollCappedChanged,
+					scrollTop: scrollTop,
+					scrollHeight: scrollHeight,
+					mainOffsetHeight: mainOffsetHeight
+				}
+			},
+			write: function (readData) {
+				var scrollTopCapped = readData.scrollTopCapped;
+				var scrollCappedChanged = readData.scrollCappedChanged;
+				var scrollTop = readData.scrollTop;
+				var scrollHeight = readData.scrollHeight;
+				var mainOffsetHeight = readData.mainOffsetHeight;
+				if (scrollCappedChanged) {
+					header.style.height = (156 - scrollTopCapped) + 'px';
+					var scaleString = 'scale(' + (1 - (scrollTopCapped / 300)) + ')';
+					headerTitles.style.webkitTransform = scaleString;
+					headerTitles.style.transform = scaleString;
+				}
+				if (lastScrollTop <= 70 && scrollTop > 70 ||
+					lastScrollTop > 70 && scrollTop <= 70) {
+					// Add a shadow to the header.
+					if (scrollTop > 70)
+						document.body.classList.add('raised');
+					else
+						document.body.classList.remove('raised');
+				}
+				// Check if we need to load the next batch of stories.
+				var loadThreshold = (scrollHeight - mainOffsetHeight - LAZY_LOAD_THRESHOLD);
+				if (scrollTop > loadThreshold) {
+					loadStoryBatch().then(_onStoryBatchCompleted);
+				}
+			}
+		}
+	};
+
   var lastScrollAnimationFrameId;
+  var isExecutingScrollListeners = false;
   main.addEventListener('scroll', (function () {
-    cancelAnimationFrame(lastScrollAnimationFrameId);
-    lastScrollAnimationFrameId = requestAnimationFrame(function () {
+		if (!isExecutingScrollListeners) {
 			cancelAnimationFrame(lastScrollAnimationFrameId);
-      var currentScroll = main.scrollTop;
-      var totalHeight = main.scrollHeight;
-      var elementHeight = main.offsetHeight;
-      scrollListeners.forEach(function (listener) {
-        listener(currentScroll, totalHeight, elementHeight);
-      });
-    });
+			lastScrollAnimationFrameId = requestAnimationFrame(function () {
+				isExecutingScrollListeners = true;
+				var currentScroll = main.scrollTop;
+				var totalHeight = main.scrollHeight;
+				var elementHeight = main.offsetHeight;
+				scrollListeners.map(function (listener) {
+					return {
+						writeFn: listener.write,
+						readData: listener.read(currentScroll, totalHeight, elementHeight)
+					}
+				}).forEach(function (listenerData) {
+					listenerData.writeFn(listenerData.readData);
+				});
+				isExecutingScrollListeners = false;
+			});
+		}
   }), APP.featureDetection.supportsPassiveListeners() ? { passive: true } : null);
 
-  scrollListeners.push(colorizeAndScaleStories);
-	scrollListeners.push(headerListener);
+  scrollListeners.push(colorizeAndScaleStoriesListener);
+	scrollListeners.push(createHeaderListener());
 
   var createStoryNode = (function () {
     var originalStoryNode = document.createElement('div');
@@ -248,35 +287,48 @@ APP.Main = (function () {
     });
   })();
 
-  function loadStoryBatch() {
+  function _onStoryBatchCompleted() {
+		requestAnimationFrame(function () {
+			var currentScroll = main.scrollTop;
+			var totalHeight = main.scrollHeight;
+			var elementHeight = main.offsetHeight;
+			colorizeAndScaleStoriesListener.write(
+				colorizeAndScaleStoriesListener.read(currentScroll, totalHeight, elementHeight)
+			)
+		})
+	}
 
+  function loadStoryBatch() {
     if (storyLoadCount > 0)
       return;
 
-    storyLoadCount = count;
+    storyLoadCount = STORIES_TO_LOAD_IN_BATCH;
 
-    var end = storyStart + count;
-    var fragment = document.createDocumentFragment();
-    for (var i = storyStart; i < end; i++) {
+    var end = storyStart + STORIES_TO_LOAD_IN_BATCH;
 
-      if (i >= stories.length)
-        return;
+		var fragment = document.createDocumentFragment();
+    var promiseList = stories.slice(storyStart, end).map(function (storyId) {
+    	return new Promise(function (resolve, reject) {
+				fragment.appendChild(createLoadingStoryNode(storyId.toString()));
+				APP.Data.getStoryById(storyId, function (storyData) {
+					requestAnimationFrame(function () {
+						onStoryData(storyId, storyData);
+						resolve(storyData);
+					})
+				});
+			})
+		});
 
-      var key = String(stories[i]);
-      fragment.appendChild(createLoadingStoryNode(key));
+		storyStart += STORIES_TO_LOAD_IN_BATCH;
+		main.appendChild(fragment);
 
-      APP.Data.getStoryById(stories[i], onStoryData.bind(this, key));
-    }
-    main.appendChild(fragment);
-
-    storyStart += count;
-
+		return Promise.all(promiseList);
   }
 
   // Bootstrap in the stories.
   APP.Data.getTopStories(function (data) {
     stories = data;
-    loadStoryBatch();
+    loadStoryBatch().then(_onStoryBatchCompleted);
     main.classList.remove('loading');
     visibleStoryElements = [];
     new MutationObserver(mutationObserver).observe(main, { childList: true })
