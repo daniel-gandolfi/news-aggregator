@@ -27,7 +27,7 @@ APP.StoryDetails = (function () {
         tmplStoryDetails = tmplStoryDetails.replace(intlRelative, '');
         tmplformatTimeRelative = tmplformatTimeRelative.replace(intlRelative, '');
     }
-    var storyDetailsTemplate = Handlebars.compile(tmplStoryDetails);
+    var storyDetailsTemplate;
     var formatTimeRelativeTemplate = Handlebars.compile(tmplformatTimeRelative);
 
     function _createStoryDetailCommentNode(id, comment) {
@@ -132,6 +132,9 @@ APP.StoryDetails = (function () {
     }
 
     function createContainerDOM(storyDetails) {
+        if (!storyDetailsTemplate) {
+            storyDetailsTemplate = Handlebars.compile(tmplStoryDetails);
+        }
         var storyDetailsHtml = storyDetailsTemplate(storyDetails);
 
         storyDetailContainerDOM = document.createElement('section');
