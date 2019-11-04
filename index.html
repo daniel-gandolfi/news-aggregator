@@ -121,11 +121,12 @@ limitations under the License.
           if (document.readyState !== "loading") {
             scriptsToLoad.forEach(loadScript);
           } else {
-            document.addEventListener("readystatechange", function(){
+            document.addEventListener("readystatechange", (function _onStateChange(){
               if (document.readyState !== "loading") {
                 scriptsToLoad.forEach(loadScript);
+                document.removeEventListener("readystatechange", _onStateChange);
               }
-            })
+            }))
           }
         } else {
           scriptsToLoad.forEach(loadScript);
