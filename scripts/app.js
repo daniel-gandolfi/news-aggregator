@@ -211,7 +211,7 @@ APP.Main = (function () {
 				// Check if we need to load the next batch of stories.
 				var loadThreshold = (scrollHeight - mainOffsetHeight - LAZY_LOAD_THRESHOLD);
 				if (scrollTop > loadThreshold) {
-					loadStoryBatch().then(_onStoryBatchCompleted);
+					loadStoryBatch();
 				}
 			}
 		}
@@ -323,14 +323,14 @@ APP.Main = (function () {
 			storyStart += STORIES_TO_LOAD_IN_BATCH;
 			main.appendChild(fragment);
 
-			return Promise.all(promiseList);
+			return Promise.all(promiseList).then(_onStoryBatchCompleted);
 		});
 	})();
 
   // Bootstrap in the stories.
   APP.Data.getTopStories(function (data) {
     stories = data;
-    loadStoryBatch().then(_onStoryBatchCompleted);
+    loadStoryBatch();
     main.classList.remove('loading');
     visibleStoryElements = [];
     new MutationObserver(mutationObserver).observe(main, { childList: true })
