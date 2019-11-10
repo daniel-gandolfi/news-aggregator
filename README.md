@@ -14,6 +14,7 @@ Unfortunately it has a bunch of performance issues, such as:
 
 Your mission is to find and fix the issues, and make the app gloriously performant!
 
+You can checkout the [before](http://udacity.github.io/news-aggregator/) and [my solution](https://daniel-gandolfi.github.io/news-aggregator/)
 ## License
 
 See /LICENSE for more.
