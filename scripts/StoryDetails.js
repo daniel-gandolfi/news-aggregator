@@ -31,6 +31,7 @@ APP.StoryDetails = (function () {
     var formatTimeRelativeTemplate = Handlebars.compile(tmplformatTimeRelative);
 
     function _createStoryDetailCommentNode(id, comment) {
+			if (comment) {
         var commentNode = document.createElement('aside')
         commentNode.id = "sdc-" + id;
         commentNode.className = 'story-details__comment';
@@ -50,6 +51,7 @@ APP.StoryDetails = (function () {
         commentNode.appendChild(commentText);
 
         return commentNode;
+			}
     }
 
     function _createLoadingStoryDetailCommentNode() {
@@ -94,8 +96,10 @@ APP.StoryDetails = (function () {
                 if (!isExecutingOpeningAnimation) {
                     requestAnimationFrame(function () {
                         commentMap[id].details = commentDetails;
-                        var comment = commentMap[id].node = _createStoryDetailCommentNode(id, commentDetails);
-                        commentsElement.appendChild(comment);
+                        var commentNode = commentMap[id].node = _createStoryDetailCommentNode(id, commentDetails);
+                        if (commentNode) {
+                            commentsElement.appendChild(commentNode);
+                        }
                     })
                 } else {
                     commentMap[id].node = _createStoryDetailCommentNode(id, commentDetails);
@@ -228,10 +232,11 @@ APP.StoryDetails = (function () {
                                     _removeCommentsFromContainer(commentsElement);
                                     Object.values(commentMap).forEach(function(commentData){
                                         var commentDetails = commentData.details;
-                                        commentsElement.appendChild(
-                                            commentData.node || 
-                                            _createStoryDetailCommentNode(commentData.id, commentDetails)
-                                        );
+                                        var commentNodeToAppend = commentData.node ||
+                                          _createStoryDetailCommentNode(commentData.id, commentDetails);
+                                        if (commentNodeToAppend) {
+                                            commentsElement.appendChild(commentNodeToAppend);
+                                        }
                                     })
                                 }
                                 isExecutingOpeningAnimation = false;
