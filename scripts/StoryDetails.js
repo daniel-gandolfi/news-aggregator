@@ -230,7 +230,7 @@ APP.StoryDetails = (function () {
                                         var commentDetails = commentData.details;
                                         commentsElement.appendChild(
                                             commentData.node || 
-                                            _createStoryDetailCommentNode(commentDetails.id, commentDetails)
+                                            _createStoryDetailCommentNode(commentData.id, commentDetails)
                                         );
                                     })
                                 }
