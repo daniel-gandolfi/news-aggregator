@@ -104,32 +104,50 @@ limitations under the License.
 
       (function(){
         var loadScript = function(url) {
-          var script = document.createElement("script");
-          script.src = url;
-          document.body.appendChild(script);
+          return fetch(url).then(function (response) {
+            response.text().then(function (content) {
+              var script = document.createElement("script");
+              script.innerHTML = content;
+              document.body.appendChild(script);
+            });
+          })
         };
+        var dependencies = [
+          "scripts/StoryDetails.js"
+        ];
         var scriptsToLoad = [
-          "scripts/StoryDetails.js",
           "scripts/app.js"
         ];
         if (typeof window.Intl !== 'undefined') {
-          scriptsToLoad.splice(
+          dependencies.splice(
             0,
             0,
             "third_party/handlebars-intl.min.js"
           );
           if (document.readyState !== "loading") {
-            scriptsToLoad.forEach(loadScript);
+            Promise.all(
+              dependencies.map(loadScript)
+            ).then(function () {
+              scriptsToLoad.forEach(loadScript);
+            })
           } else {
             document.addEventListener("readystatechange", (function _onStateChange(){
               if (document.readyState !== "loading") {
-                scriptsToLoad.forEach(loadScript);
                 document.removeEventListener("readystatechange", _onStateChange);
+                Promise.all(
+                  dependencies.map(loadScript)
+                ).then(function () {
+                  scriptsToLoad.forEach(loadScript);
+                })
               }
             }))
           }
         } else {
-          scriptsToLoad.forEach(loadScript);
+          Promise.all(
+            dependencies.map(loadScript)
+          ).then(function () {
+            scriptsToLoad.forEach(loadScript);
+          })
         }
       })()
     </script>
